@@ -1,6 +1,8 @@
 import type {
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 export class WhatsAppApi implements ICredentialType {
@@ -9,6 +11,17 @@ export class WhatsAppApi implements ICredentialType {
 	displayName = 'WhatsApp API';
 
 	documentationUrl = 'https://developers.facebook.com/docs/whatsapp';
+
+	icon: Icon = 'file:../icons/whatsapp.svg';
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.evolutionBaseUrl || "https://graph.facebook.com"}}',
+			url: '',
+			method: 'GET',
+			skipSslCertificateValidation: true,
+		},
+	};
 
 	properties: INodeProperties[] = [
 		{

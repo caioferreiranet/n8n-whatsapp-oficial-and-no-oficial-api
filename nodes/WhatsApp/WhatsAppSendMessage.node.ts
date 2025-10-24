@@ -4,8 +4,25 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IHttpRequestOptions,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+interface WhatsAppConfig {
+	apiProvider: string;
+	credentials: IDataObject;
+}
+
+interface WhatsAppCredentials {
+	accessToken?: string;
+	phoneNumberId?: string;
+	instanceId?: string;
+	token?: string;
+	clientToken?: string;
+	baseUrl?: string;
+	apiKey?: string;
+	instanceName?: string;
+}
 
 export class WhatsAppSendMessage implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,6 +37,7 @@ export class WhatsAppSendMessage implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		usableAsTool: true,
 		properties: [
 			{
 				displayName: 'Phone Number',
@@ -36,14 +54,9 @@ export class WhatsAppSendMessage implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Text',
-						value: 'text',
-						description: 'Send a text message',
-					},
-					{
-						name: 'Image',
-						value: 'image',
-						description: 'Send an image',
+						name: 'Audio',
+						value: 'audio',
+						description: 'Send an audio file',
 					},
 					{
 						name: 'Document',
@@ -51,9 +64,14 @@ export class WhatsAppSendMessage implements INodeType {
 						description: 'Send a document',
 					},
 					{
-						name: 'Audio',
-						value: 'audio',
-						description: 'Send an audio file',
+						name: 'Image',
+						value: 'image',
+						description: 'Send an image',
+					},
+					{
+						name: 'Text',
+						value: 'text',
+						description: 'Send a text message',
 					},
 					{
 						name: 'Video',
@@ -134,7 +152,7 @@ export class WhatsAppSendMessage implements INodeType {
 				const item = items[itemIndex];
 
 				// Get WhatsApp configuration from previous WhatsAppConfig node
-				const whatsappConfig = item.json.whatsappConfig as any;
+				const whatsappConfig = item.json.whatsappConfig as WhatsAppConfig;
 
 				if (!whatsappConfig || !whatsappConfig.apiProvider) {
 					throw new NodeOperationError(
@@ -147,7 +165,7 @@ export class WhatsAppSendMessage implements INodeType {
 				const phoneNumber = this.getNodeParameter('phoneNumber', itemIndex) as string;
 				const messageType = this.getNodeParameter('messageType', itemIndex) as string;
 
-				let responseData: any;
+				let responseData: IDataObject;
 
 				switch (whatsappConfig.apiProvider) {
 					case 'official':
@@ -215,16 +233,16 @@ export class WhatsAppSendMessage implements INodeType {
 
 async function sendWhatsAppOfficial(
 		this: IExecuteFunctions,
-		credentials: any,
+		credentials: IDataObject,
 		phoneNumber: string,
 		messageType: string,
 		itemIndex: number
-	): Promise<any> {
-		const { accessToken, phoneNumberId } = credentials;
+	): Promise<IDataObject> {
+		const { accessToken, phoneNumberId } = credentials as WhatsAppCredentials;
 
 		const baseUrl = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
 
-		let messageBody: any = {
+		const messageBody: IDataObject = {
 			messaging_product: 'whatsapp',
 			to: phoneNumber,
 		};
@@ -238,20 +256,22 @@ async function sendWhatsAppOfficial(
 			const caption = this.getNodeParameter('caption', itemIndex, '') as string;
 
 			messageBody.type = messageType;
-			messageBody[messageType] = {
+			const mediaObject: IDataObject = {
 				link: mediaUrl,
 			};
 
 			if (caption && ['image', 'video', 'document'].includes(messageType)) {
-				messageBody[messageType].caption = caption;
+				mediaObject.caption = caption;
 			}
 
 			if (messageType === 'document') {
 				const filename = this.getNodeParameter('filename', itemIndex, '') as string;
 				if (filename) {
-					messageBody[messageType].filename = filename;
+					mediaObject.filename = filename;
 				}
 			}
+
+			messageBody[messageType] = mediaObject;
 		}
 
 		const options: IHttpRequestOptions = {
@@ -270,15 +290,15 @@ async function sendWhatsAppOfficial(
 
 async function sendZApi(
 		this: IExecuteFunctions,
-		credentials: any,
+		credentials: IDataObject,
 		phoneNumber: string,
 		messageType: string,
 		itemIndex: number
-	): Promise<any> {
-		const { instanceId, token, clientToken, baseUrl } = credentials;
+	): Promise<IDataObject> {
+		const { instanceId, token, clientToken, baseUrl } = credentials as WhatsAppCredentials;
 
 		let endpoint = '';
-		let messageBody: any = {
+		const messageBody: IDataObject = {
 			phone: phoneNumber,
 		};
 
@@ -330,16 +350,16 @@ async function sendZApi(
 
 async function sendEvolutionApi(
 		this: IExecuteFunctions,
-		credentials: any,
+		credentials: IDataObject,
 		phoneNumber: string,
 		messageType: string,
 		itemIndex: number
-	): Promise<any> {
-		const { baseUrl, apiKey, instanceName } = credentials;
+	): Promise<IDataObject> {
+		const { baseUrl, apiKey, instanceName } = credentials as WhatsAppCredentials;
 
 		const endpoint = `${baseUrl}/message/sendText/${instanceName}`;
 
-		let messageBody: any = {
+		const messageBody: IDataObject = {
 			number: phoneNumber,
 		};
 
@@ -353,34 +373,40 @@ async function sendEvolutionApi(
 			const caption = this.getNodeParameter('caption', itemIndex, '') as string;
 
 			switch (messageType) {
-				case 'image':
-					messageBody.mediaMessage = {
+				case 'image': {
+					const imageMessage: IDataObject = {
 						mediatype: 'image',
 						media: mediaUrl,
 					};
-					if (caption) messageBody.mediaMessage.caption = caption;
+					if (caption) imageMessage.caption = caption;
+					messageBody.mediaMessage = imageMessage;
 					break;
-				case 'document':
-					messageBody.mediaMessage = {
+				}
+				case 'document': {
+					const docMessage: IDataObject = {
 						mediatype: 'document',
 						media: mediaUrl,
 					};
-					if (caption) messageBody.mediaMessage.caption = caption;
+					if (caption) docMessage.caption = caption;
 					const filename = this.getNodeParameter('filename', itemIndex, '') as string;
-					if (filename) messageBody.mediaMessage.fileName = filename;
+					if (filename) docMessage.fileName = filename;
+					messageBody.mediaMessage = docMessage;
 					break;
+				}
 				case 'audio':
 					messageBody.audioMessage = {
 						audio: mediaUrl,
 					};
 					break;
-				case 'video':
-					messageBody.mediaMessage = {
+				case 'video': {
+					const videoMessage: IDataObject = {
 						mediatype: 'video',
 						media: mediaUrl,
 					};
-					if (caption) messageBody.mediaMessage.caption = caption;
+					if (caption) videoMessage.caption = caption;
+					messageBody.mediaMessage = videoMessage;
 					break;
+				}
 			}
 		}
 

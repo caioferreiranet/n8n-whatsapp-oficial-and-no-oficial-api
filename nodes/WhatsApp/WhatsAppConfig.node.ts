@@ -19,6 +19,7 @@ export class WhatsAppConfig implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'whatsAppApi',
