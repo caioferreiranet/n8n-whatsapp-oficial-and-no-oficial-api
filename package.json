@@ -1,19 +1,24 @@
 {
-	"name": "n8n-nodes-<...>",
+	"name": "n8n-nodes-whatsapp-multi-api",
 	"version": "0.1.0",
-	"description": "",
+	"description": "n8n node for sending WhatsApp messages using Official API, Z-API, or Evolution API",
 	"license": "MIT",
-	"homepage": "",
+	"homepage": "https://github.com/caioferreiranet/n8n-whatsapp-oficial-and-no-oficial-api",
 	"keywords": [
-		"n8n-community-node-package"
+		"n8n-community-node-package",
+		"whatsapp",
+		"whatsapp-api",
+		"z-api",
+		"evolution-api",
+		"messaging"
 	],
 	"author": {
-		"name": "",
+		"name": "Caio Ferreira",
 		"email": ""
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/<...>/n8n-nodes-<...>.git"
+		"url": "https://github.com/caioferreiranet/n8n-whatsapp-oficial-and-no-oficial-api.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",
@@ -31,12 +36,11 @@
 		"n8nNodesApiVersion": 1,
 		"strict": true,
 		"credentials": [
-			"dist/credentials/GithubIssuesApi.credentials.js",
-			"dist/credentials/GithubIssuesOAuth2Api.credentials.js"
+			"dist/credentials/WhatsAppApi.credentials.js"
 		],
 		"nodes": [
-			"dist/nodes/GithubIssues/GithubIssues.node.js",
-			"dist/nodes/Example/Example.node.js"
+			"dist/nodes/WhatsApp/WhatsAppConfig.node.js",
+			"dist/nodes/WhatsApp/WhatsAppSendMessage.node.js"
 		]
 	},
 	"devDependencies": {
