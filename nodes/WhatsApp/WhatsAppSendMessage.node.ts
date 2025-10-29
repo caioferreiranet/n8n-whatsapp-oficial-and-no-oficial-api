@@ -59,11 +59,6 @@ export class WhatsAppSendMessage implements INodeType {
 						description: 'Send an audio file',
 					},
 					{
-						name: 'Button List',
-						value: 'buttonList',
-						description: 'Send an interactive list with buttons',
-					},
-					{
 						name: 'Document',
 						value: 'document',
 						description: 'Send a document',
@@ -144,73 +139,6 @@ export class WhatsAppSendMessage implements INodeType {
 					},
 				},
 				description: 'Optional filename for the document',
-			},
-			// Button List options
-			{
-				displayName: 'List Title',
-				name: 'listTitle',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						messageType: ['buttonList'],
-					},
-				},
-				description: 'Title of the list (Evolution/Official) or main message (Z-API)',
-			},
-			{
-				displayName: 'List Description',
-				name: 'listDescription',
-				type: 'string',
-				typeOptions: {
-					rows: 2,
-				},
-				default: '',
-				displayOptions: {
-					show: {
-						messageType: ['buttonList'],
-					},
-				},
-				description: 'Description/body text of the list (not used in Z-API)',
-			},
-			{
-				displayName: 'Button Text',
-				name: 'buttonText',
-				type: 'string',
-				default: 'Select an option',
-				required: true,
-				displayOptions: {
-					show: {
-						messageType: ['buttonList'],
-					},
-				},
-				description: 'Text displayed on the button to open the list',
-			},
-			{
-				displayName: 'Footer Text',
-				name: 'footerText',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						messageType: ['buttonList'],
-					},
-				},
-				description: 'Optional footer text for the list',
-			},
-			{
-				displayName: 'List Sections',
-				name: 'listSections',
-				type: 'json',
-				default: '[{"title":"Section 1","rows":[{"id":"1","title":"Option 1","description":"Description 1"}]}]',
-				required: true,
-				displayOptions: {
-					show: {
-						messageType: ['buttonList'],
-					},
-				},
-				description: 'JSON array with sections and rows. Format: [{"title":"Section Title","rows":[{"id":"unique_id","title":"Row Title","description":"Row Description"}]}]',
 			},
 		],
 	};
@@ -323,55 +251,6 @@ async function sendWhatsAppOfficial(
 			const message = this.getNodeParameter('message', itemIndex) as string;
 			messageBody.type = 'text';
 			messageBody.text = { body: message };
-		} else if (messageType === 'buttonList') {
-			const listTitle = this.getNodeParameter('listTitle', itemIndex) as string;
-			const listDescription = this.getNodeParameter('listDescription', itemIndex) as string;
-			const buttonText = this.getNodeParameter('buttonText', itemIndex) as string;
-			const footerText = this.getNodeParameter('footerText', itemIndex, '') as string;
-			const listSectionsJson = this.getNodeParameter('listSections', itemIndex) as string;
-
-			let listSections;
-			try {
-				listSections = JSON.parse(listSectionsJson);
-			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Invalid JSON format for List Sections',
-					{ itemIndex }
-				);
-			}
-
-			messageBody.type = 'interactive';
-			messageBody.interactive = {
-				type: 'list',
-				body: {
-					text: listDescription || listTitle,
-				},
-				action: {
-					button: buttonText,
-					sections: listSections.map((section: any) => ({
-						title: section.title,
-						rows: section.rows.map((row: any) => ({
-							id: row.id,
-							title: row.title,
-							description: row.description || '',
-						})),
-					})),
-				},
-			};
-
-			if (listTitle && listDescription) {
-				(messageBody.interactive as IDataObject).header = {
-					type: 'text',
-					text: listTitle,
-				};
-			}
-
-			if (footerText) {
-				(messageBody.interactive as IDataObject).footer = {
-					text: footerText,
-				};
-			}
 		} else {
 			const mediaUrl = this.getNodeParameter('mediaUrl', itemIndex) as string;
 			const caption = this.getNodeParameter('caption', itemIndex, '') as string;
@@ -427,37 +306,6 @@ async function sendZApi(
 			endpoint = `${baseUrl}/instances/${instanceId}/token/${token}/send-text`;
 			const message = this.getNodeParameter('message', itemIndex) as string;
 			messageBody.message = message;
-		} else if (messageType === 'buttonList') {
-			endpoint = `${baseUrl}/instances/${instanceId}/token/${token}/send-button-list`;
-			const listTitle = this.getNodeParameter('listTitle', itemIndex) as string;
-			const listSectionsJson = this.getNodeParameter('listSections', itemIndex) as string;
-
-			let listSections;
-			try {
-				listSections = JSON.parse(listSectionsJson);
-			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Invalid JSON format for List Sections',
-					{ itemIndex }
-				);
-			}
-
-			// Z-API uses a flat list of buttons
-			const buttons: IDataObject[] = [];
-			listSections.forEach((section: any) => {
-				section.rows.forEach((row: any) => {
-					buttons.push({
-						id: row.id,
-						label: row.title,
-					});
-				});
-			});
-
-			messageBody.message = listTitle;
-			messageBody.buttonList = {
-				buttons: buttons,
-			};
 		} else {
 			const mediaUrl = this.getNodeParameter('mediaUrl', itemIndex) as string;
 
@@ -519,38 +367,6 @@ async function sendEvolutionApi(
 			endpoint = `${baseUrl}/message/sendText/${instanceName}`;
 			const message = this.getNodeParameter('message', itemIndex) as string;
 			messageBody.text = message;
-		} else if (messageType === 'buttonList') {
-			endpoint = `${baseUrl}/message/sendList/${instanceName}`;
-			const listTitle = this.getNodeParameter('listTitle', itemIndex) as string;
-			const listDescription = this.getNodeParameter('listDescription', itemIndex) as string;
-			const buttonText = this.getNodeParameter('buttonText', itemIndex) as string;
-			const footerText = this.getNodeParameter('footerText', itemIndex, '') as string;
-			const listSectionsJson = this.getNodeParameter('listSections', itemIndex) as string;
-
-			let listSections;
-			try {
-				listSections = JSON.parse(listSectionsJson);
-			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Invalid JSON format for List Sections',
-					{ itemIndex }
-				);
-			}
-
-			// Evolution API format
-			messageBody.title = listTitle;
-			messageBody.description = listDescription || listTitle;
-			messageBody.buttonText = buttonText;
-			messageBody.footerText = footerText;
-			messageBody.values = listSections.map((section: any) => ({
-				title: section.title,
-				rows: section.rows.map((row: any) => ({
-					title: row.title,
-					description: row.description || '',
-					rowId: row.id,
-				})),
-			}));
 		} else {
 			endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
 			const mediaUrl = this.getNodeParameter('mediaUrl', itemIndex) as string;
