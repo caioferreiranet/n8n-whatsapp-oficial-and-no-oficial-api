@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-whatsapp-multi-api",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "n8n node for sending WhatsApp messages using Official API, Z-API, or Evolution API",
 	"license": "MIT",
 	"homepage": "https://github.com/caioferreiranet/n8n-whatsapp-oficial-and-no-oficial-api",
