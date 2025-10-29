@@ -26,14 +26,14 @@ interface WhatsAppCredentials {
 
 export class WhatsAppSendMessage implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'WhatsApp Send Message',
+		displayName: 'WhatsApp Multi API Send Message',
 		name: 'whatsAppSendMessage',
 		icon: 'file:whatsapp.svg',
 		group: ['output'],
 		version: 1,
 		description: 'Send WhatsApp messages using configured API provider',
 		defaults: {
-			name: 'WhatsApp Send Message',
+			name: 'WhatsApp Multi API Send Message',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -357,56 +357,49 @@ async function sendEvolutionApi(
 	): Promise<IDataObject> {
 		const { baseUrl, apiKey, instanceName } = credentials as WhatsAppCredentials;
 
-		const endpoint = `${baseUrl}/message/sendText/${instanceName}`;
+		let endpoint = '';
 
 		const messageBody: IDataObject = {
 			number: phoneNumber,
 		};
 
 		if (messageType === 'text') {
+			endpoint = `${baseUrl}/message/sendText/${instanceName}`;
 			const message = this.getNodeParameter('message', itemIndex) as string;
-			messageBody.textMessage = {
-				text: message,
-			};
+			messageBody.text = message;
 		} else {
+			endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
 			const mediaUrl = this.getNodeParameter('mediaUrl', itemIndex) as string;
 			const caption = this.getNodeParameter('caption', itemIndex, '') as string;
 
+			// Determinar o mimetype baseado no tipo de mensagem
+			let mimetype = '';
 			switch (messageType) {
-				case 'image': {
-					const imageMessage: IDataObject = {
-						mediatype: 'image',
-						media: mediaUrl,
-					};
-					if (caption) imageMessage.caption = caption;
-					messageBody.mediaMessage = imageMessage;
+				case 'image':
+					mimetype = 'image/png';
 					break;
-				}
-				case 'document': {
-					const docMessage: IDataObject = {
-						mediatype: 'document',
-						media: mediaUrl,
-					};
-					if (caption) docMessage.caption = caption;
-					const filename = this.getNodeParameter('filename', itemIndex, '') as string;
-					if (filename) docMessage.fileName = filename;
-					messageBody.mediaMessage = docMessage;
+				case 'document':
+					mimetype = 'application/pdf';
 					break;
-				}
 				case 'audio':
-					messageBody.audioMessage = {
-						audio: mediaUrl,
-					};
+					mimetype = 'audio/mp3';
 					break;
-				case 'video': {
-					const videoMessage: IDataObject = {
-						mediatype: 'video',
-						media: mediaUrl,
-					};
-					if (caption) videoMessage.caption = caption;
-					messageBody.mediaMessage = videoMessage;
+				case 'video':
+					mimetype = 'video/mp4';
 					break;
-				}
+			}
+
+			messageBody.mediatype = messageType;
+			messageBody.mimetype = mimetype;
+			messageBody.media = mediaUrl;
+			messageBody.caption = caption || '';
+
+			// Adicionar fileName para documentos
+			if (messageType === 'document') {
+				const filename = this.getNodeParameter('filename', itemIndex, '') as string;
+				messageBody.fileName = filename || 'document.pdf';
+			} else {
+				messageBody.fileName = `file.${messageType === 'image' ? 'png' : messageType === 'audio' ? 'mp3' : 'mp4'}`;
 			}
 		}
 

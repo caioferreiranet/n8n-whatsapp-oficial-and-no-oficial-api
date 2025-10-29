@@ -8,14 +8,14 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 export class WhatsAppConfig implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'WhatsApp Config',
+		displayName: 'WhatsApp Multi API Config',
 		name: 'whatsAppConfig',
 		icon: 'file:whatsapp.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Configure which WhatsApp API to use in the workflow',
 		defaults: {
-			name: 'WhatsApp Config',
+			name: 'WhatsApp Multi API Config',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
